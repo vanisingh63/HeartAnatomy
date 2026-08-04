@@ -1,0 +1,88 @@
+.anatomy-callout {
+  padding: 4px 7px;
+  border: 1px solid rgba(243, 182, 174, 0.55);
+  border-radius: 6px;
+  background: rgba(23, 11, 13, 0.92);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.6);
+  color: #ffe0dc;
+  font-size: 8px;
+  white-space: nowrap;
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+
+.anatomy-callout.small {
+  padding: 3px 5px;
+  font-size: 7px;
+}
+
+.anatomy-callout.active,
+.anatomy-callout:hover {
+  border-color: #fff0ed;
+  background: rgba(109, 31, 40, 0.95);
+  box-shadow: 0 0 14px rgba(255, 151, 143, 0.35);
+}
+
+.vessel-label {
+  border-color: rgba(255, 255, 255, 0.35);
+  font-size: 8px;
+}
+
+.exterior-label {
+  border-color: rgba(255, 112, 122, 0.48);
+  background: rgba(22, 8, 11, 0.9);
+  color: #ffe9e7;
+  font-size: 8px;
+}
+
+.part-label {
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+
+.back-labels {
+  width: 100%;
+  margin-top: 8px;
+  padding: 9px;
+  border: 0;
+  border-radius: 9px;
+  background: rgba(103, 204, 209, 0.12);
+  color: #a9edf0;
+  cursor: pointer;
+}
+
+.back-labels:hover {
+  background: rgba(103, 204, 209, 0.2);
+}
+
+.navigator {
+  max-height: calc(100vh - 190px);
+  display: flex;
+  flex-direction: column;
+}
+
+.navigator-scroll {
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 5px;
+  scrollbar-color: rgba(103, 204, 209, 0.35) transparent;
+  scrollbar-width: thin;
+}
+
+.nav-section + .nav-section {
+  margin-top: 17px;
+}
+
+.nav-section h3 {
+  margin: 0 2px 8px;
+  color: #789295;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.navigator .chamber-list button {
+  min-height: 42px;
+}
