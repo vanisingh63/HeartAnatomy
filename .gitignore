@@ -1,0 +1,7 @@
+dist/
+node_modules/
+.vite/
+*.log
+.env
+.env.*
+public/models/heart.glb
