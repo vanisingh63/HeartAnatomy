@@ -1,3 +1,10 @@
+.app,
+html,
+body,
+#root {
+  background: #f7f9f9;
+}
+
 .anatomy-callout {
   padding: 4px 7px;
   border: 1px solid rgba(243, 182, 174, 0.55);
@@ -85,4 +92,200 @@
 
 .navigator .chamber-list button {
   min-height: 42px;
+}
+
+.detail:has(.inside-list) {
+  max-height: calc(100vh - 175px);
+  overflow-y: auto;
+}
+
+.inside-list {
+  margin: 14px 0;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.inside-list h3 {
+  margin: 0 0 8px;
+  color: #72d2d6;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.inside-list > button {
+  width: 100%;
+  margin-bottom: 5px;
+  padding: 8px 9px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.035);
+  color: #dce9e9;
+  text-align: left;
+  cursor: pointer;
+}
+
+.inside-list > button:hover,
+.inside-list > button.open {
+  border-color: rgba(103, 204, 209, 0.3);
+  background: rgba(103, 204, 209, 0.08);
+}
+
+.inside-list button > span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10px;
+}
+
+.inside-list span i {
+  color: #708b8e;
+  font-size: 8px;
+  font-style: normal;
+}
+
+.inside-list span b {
+  margin-left: auto;
+  color: #70cdd1;
+}
+
+.inside-list button p {
+  margin: 7px 0 1px 22px;
+  color: #9db1b2;
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.topbar {
+  color: #172b2f;
+  background: linear-gradient(180deg, rgba(247, 249, 249, 0.96), rgba(247, 249, 249, 0));
+}
+
+.topbar .eyebrow {
+  color: #278d94;
+}
+
+.topbar .status {
+  color: #526b6e;
+}
+
+.internal-hotspot {
+  max-width: 120px;
+  padding: 4px 6px;
+  border: 1px solid rgba(56, 126, 132, 0.5);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #17383b;
+  font-size: 7px;
+  line-height: 1.15;
+  cursor: pointer;
+  white-space: normal;
+}
+
+.internal-hotspot.active {
+  border-color: #d39d23;
+  background: #fff4cd;
+  color: #5f4300;
+}
+
+.narrate {
+  width: 100%;
+  margin: 4px 0 8px;
+  padding: 8px;
+  border: 1px solid rgba(103, 204, 209, 0.35);
+  border-radius: 8px;
+  background: rgba(103, 204, 209, 0.1);
+  color: #a9edf0;
+  cursor: pointer;
+}
+
+.quiz {
+  margin: 14px 0;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.quiz h3 { margin: 0 0 6px; color: #72d2d6; font-size: 9px; text-transform: uppercase; letter-spacing: .1em; }
+.quiz p { margin: 0 0 8px; font-size: 10px; }
+.quiz button { width: 100%; margin: 3px 0; padding: 7px; border: 1px solid rgba(255,255,255,.1); border-radius: 7px; background: rgba(255,255,255,.04); color: #d9e6e7; cursor: pointer; text-align: left; }
+.quiz button.correct { border-color: #53d48a; background: rgba(83,212,138,.14); }
+.quiz button.wrong { border-color: #ff6b75; background: rgba(255,107,117,.14); }
+.quiz strong { display: block; margin-top: 7px; color: #b9dbdc; font-size: 9px; }
+
+.view-presets { display: flex; gap: 2px; padding-right: 7px; border-right: 1px solid rgba(255,255,255,.12); }
+.view-presets button { text-transform: capitalize; font-size: 9px; }
+
+.orientation {
+  position: absolute;
+  z-index: 6;
+  right: 30px;
+  bottom: 88px;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  color: #315a5e;
+  font-size: 9px;
+  pointer-events: none;
+}
+.orientation span { display: flex; gap: 7px; align-items: center; padding: 4px 7px; border: 1px solid rgba(49,90,94,.25); border-radius: 7px; background: rgba(255,255,255,.8); }
+.orientation i { font-style: normal; font-weight: 700; color: #d64d59; }
+
+.enter-floating {
+  position: absolute;
+  z-index: 7;
+  left: 50%;
+  bottom: 82px;
+  transform: translateX(-50%);
+  padding: 10px 18px;
+  border: 1px solid #2f8f96;
+  border-radius: 999px;
+  background: #ffffffee;
+  box-shadow: 0 8px 24px rgba(22, 63, 67, .18);
+  color: #17666c;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.app { font-size: calc(16px * var(--text-scale, 1)); }
+.app button, .app select, .app input { font-size: inherit; }
+
+button:focus-visible,
+select:focus-visible,
+input:focus-visible {
+  outline: 3px solid #f2b134 !important;
+  outline-offset: 3px;
+}
+
+.accessibility-toggle {
+  position: absolute; z-index: 9; right: 28px; top: 92px;
+  padding: 8px 12px; border: 1px solid #3f777b; border-radius: 9px;
+  background: #fff; color: #234f53; cursor: pointer;
+}
+.accessibility-panel { position: absolute; z-index: 10; right: 28px; top: 132px; width: 250px; padding: 18px; border-radius: 14px; color: #eaf5f5; }
+.accessibility-panel h2 { margin: 0 0 12px; }
+.accessibility-panel label { display: flex; align-items: center; gap: 8px; margin: 9px 0; font-size: 11px; }
+.accessibility-panel label select { margin-left: auto; }
+.accessibility-panel p { color: #a9bdbf; font-size: 9px; line-height: 1.5; }
+.accessibility-panel kbd { margin-left: auto; padding: 2px 5px; border: 1px solid #668; border-radius: 4px; }
+
+.captions { position: absolute; z-index: 9; left: 50%; bottom: 134px; transform: translateX(-50%); display: flex; gap: 10px; align-items: flex-start; max-width: 680px; padding: 10px 14px; border-radius: 10px; background: rgba(0,0,0,.86); color: white; font-size: calc(12px * var(--text-scale, 1)); line-height: 1.45; }
+.captions button { border: 0; background: transparent; color: white; cursor: pointer; }
+
+.sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+.colorblind-safe .red { background: #e69f00; border-radius: 2px; }
+.colorblind-safe .blue { background: #0072b2; transform: rotate(45deg); border-radius: 0; }
+.colorblind-safe .flow-key .red::after { content: ' rich'; }
+.colorblind-safe .flow-key .blue::after { content: ' poor'; }
+
+.reduced-motion *,
+.reduced-motion *::before,
+.reduced-motion *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
+
+body.xr-presenting .internal-hotspot,
+body.xr-presenting .part-label { transform: scale(1.65); transform-origin: center; min-width: 90px; min-height: 36px; font-size: 12px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
 }

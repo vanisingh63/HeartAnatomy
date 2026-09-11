@@ -46,7 +46,10 @@ function XRButton() {
     const button = VRButton.createButton(gl);
     button.classList.add('xr-entry');
     document.body.appendChild(button);
-    return () => button.remove();
+    const onStart = () => document.body.classList.add('xr-presenting');
+    const onEnd = () => document.body.classList.remove('xr-presenting');
+    gl.xr.addEventListener('sessionstart', onStart); gl.xr.addEventListener('sessionend', onEnd);
+    return () => { button.remove(); gl.xr.removeEventListener('sessionstart', onStart); gl.xr.removeEventListener('sessionend', onEnd); document.body.classList.remove('xr-presenting'); };
   }, [gl]);
   return null;
 }
@@ -92,25 +95,114 @@ function AnatomicalExterior({ cutaway }) {
   return <primitive object={model} scale={1.8} position={[0, -.05, 0]} rotation={[0, Math.PI, 0]} />;
 }
 
-function Chamber({ id, selected, showLabel, cutaway, onSelect }) {
+const EXPLODED_POSITIONS = {
+  rightAtrium: [-1.15, .82, .12],
+  rightVentricle: [-1.08, -.72, .18],
+  leftAtrium: [1.12, .8, .08],
+  leftVentricle: [1.08, -.76, .16],
+};
+
+const CHAMBER_HOTSPOTS = {
+  rightAtrium: ['Superior vena cava opening','Inferior vena cava opening','Coronary sinus','Fossa ovalis','Pectinate muscles','Tricuspid valve entrance'],
+  rightVentricle: ['Tricuspid valve','Chordae tendineae','Papillary muscles','Trabeculae carneae','Moderator band','Pulmonary valve','Right ventricular outflow tract'],
+  leftAtrium: ['Four pulmonary-vein openings','Smooth atrial wall','Left atrial appendage','Interatrial septum','Mitral-valve entrance'],
+  leftVentricle: ['Mitral valve','Chordae tendineae','Papillary muscles','Trabeculae carneae','Aortic valve','Interventricular septum','Thick ventricular myocardium'],
+};
+
+function makeAnatomicalChamberGeometry(id, cutaway) {
+  const geometry = new THREE.SphereGeometry(1, 64, 44, cutaway ? Math.PI * .08 : 0, cutaway ? Math.PI * 1.58 : Math.PI * 2);
+  const position = geometry.attributes.position;
+  for (let i = 0; i < position.count; i++) {
+    let x = position.getX(i), y = position.getY(i), z = position.getZ(i);
+    const ripple = 1 + .035 * Math.sin(x * 11 + y * 7) * Math.cos(z * 9);
+    if (id === 'leftVentricle') {
+      const taper = .68 + .32 * ((y + 1) / 2);
+      x *= taper; z *= taper; y = y < 0 ? y * 1.12 : y * .92;
+    } else if (id === 'rightVentricle') {
+      x *= .9; z *= .72; x += .2 * (1 - z * z) - .12 * y; y *= 1.03;
+    } else {
+      x *= 1 + .1 * Math.sin(y * 4); z *= .85 + .08 * Math.cos(x * 5);
+      x += (id === 'rightAtrium' ? -.08 : .08) * Math.max(0, y);
+    }
+    position.setXYZ(i, x * ripple, y * ripple, z * ripple);
+  }
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+function ChamberBloodFlow({ color, oxygenRich, motionEnabled }) {
+  const particles = useRef();
+  const dummy = useMemo(() => new THREE.Object3D(), []);
+  const curve = useMemo(() => new THREE.CatmullRomCurve3([[-.22,.3,.36],[-.05,.08,.44],[.12,-.18,.42],[.18,-.38,.32]].map(p => new THREE.Vector3(...p))), []);
+  useFrame(({ clock }) => {
+    if (!particles.current) return;
+    if (!motionEnabled) return;
+    for (let i = 0; i < 14; i++) { dummy.position.copy(curve.getPointAt((i / 14 + clock.elapsedTime * .18) % 1)); dummy.scale.setScalar(.65 + Math.sin(clock.elapsedTime * 7 + i) * .12); dummy.updateMatrix(); particles.current.setMatrixAt(i, dummy.matrix); }
+    particles.current.instanceMatrix.needsUpdate = true;
+  });
+  return <instancedMesh ref={particles} args={[null,null,14]}>{oxygenRich ? <sphereGeometry args={[.018,8,6]} /> : <octahedronGeometry args={[.021,0]} />}<meshBasicMaterial color={color} toneMapped={false} /></instancedMesh>;
+}
+
+function InternalAnatomyModels({ id }) {
+  const ventricular = id.includes('Ventricle');
+  const left = id.startsWith('left');
+  return <group position={[0,0,.34]}>
+    {ventricular && <>
+      <mesh position={[-.13,-.25,.03]} rotation={[0,0,-.08]}><coneGeometry args={[.055,.27,14]} /><meshPhysicalMaterial color="#b85e64" roughness={.7} /></mesh>
+      <mesh position={[.14,-.23,.03]} rotation={[0,0,.1]}><coneGeometry args={[.055,.3,14]} /><meshPhysicalMaterial color="#b85e64" roughness={.7} /></mesh>
+      {[-.14,-.07,0,.07,.14].map((x,i) => <Line key={`cord-${i}`} points={[[x*.8,-.13,.04],[x,.12,.04]]} color="#f2c7bc" lineWidth={1} />)}
+      {[-.28,-.18,-.08,.08,.18,.28].map((x,i) => <mesh key={`ridge-${i}`} position={[x,-.38 + Math.abs(x)*.42,.015]} rotation={[0,0,x*1.2]} scale={[.025,.18,.025]}><capsuleGeometry args={[1,1,6,10]} /><meshStandardMaterial color="#8f3d47" roughness={.8} /></mesh>)}
+      {!left && <mesh position={[0,-.18,.06]} rotation={[0,0,Math.PI/2]} scale={[.025,.3,.025]}><capsuleGeometry args={[1,1,6,10]} /><meshStandardMaterial color="#d27c78" /></mesh>}
+    </>}
+    <group position={[0,.13,.03]}>{[0,1,2].slice(0,left ? 2 : 3).map((_,i) => <mesh key={i} position={[(i-1)*.07,0,0]} rotation={[0,0,(i-1)*.35]}><coneGeometry args={[.09,.22,3]} /><meshPhysicalMaterial color="#f2b0a7" roughness={.48} side={THREE.DoubleSide} /></mesh>)}</group>
+    {!ventricular && <>{[-.25,-.16,-.07,.07,.16,.25].map((x,i) => <mesh key={i} position={[x,-.15 + Math.sin(i)*.08,.01]} scale={[.018,.28,.018]} rotation={[0,0,x]}><capsuleGeometry args={[1,1,5,8]} /><meshStandardMaterial color="#a34b55" roughness={.85} /></mesh>)}<mesh position={[0,.03,.025]} scale={[.16,.11,.025]}><sphereGeometry args={[1,24,16]} /><meshStandardMaterial color="#d58b88" roughness={.75} /></mesh></>}
+  </group>;
+}
+
+function ChamberInterior({ id, selectedFeature, onFeatureSelect, colorBlindSafe, motionEnabled }) {
+  const valve = useRef();
+  useFrame(({ clock }) => { if (valve.current && motionEnabled) valve.current.rotation.z = Math.sin(clock.elapsedTime * 4.2) * .16; });
+  const names = CHAMBER_HOTSPOTS[id];
+  return <group>
+    <ChamberBloodFlow oxygenRich={id.startsWith('left')} motionEnabled={motionEnabled} color={colorBlindSafe ? (id.startsWith('left') ? '#e69f00' : '#0072b2') : (id.startsWith('left') ? '#ff4655' : '#3977ff')} />
+    <group ref={valve} position={[0,-.12,.35]}><mesh scale={[1,.55,1]}><torusGeometry args={[.13,.025,10,28]} /><meshPhysicalMaterial color="#f6b7ad" roughness={.45} clearcoat={.3} /></mesh></group>
+    {names.map((name,index) => {
+      const side = index % 2 ? 1 : -1;
+      const y = .38 - Math.floor(index / 2) * .25;
+      const anchor = [side * .15, y, .43];
+      const label = [side * (.48 + (index % 3) * .04), y + (index % 2 ? .025 : 0), .55];
+      const active = selectedFeature === name;
+      return <group key={name}><Line points={[anchor,label]} color={active ? '#ffd166' : '#7ad4d8'} lineWidth={active ? 2 : 1} /><mesh position={anchor}><sphereGeometry args={[active ? .035 : .025,10,8]} /><meshBasicMaterial color={active ? '#ffd166' : '#70d2d6'} /></mesh><Html position={label} center zIndexRange={[4,1]}><button className={`internal-hotspot ${active ? 'active' : ''}`} onClick={(e) => { e.stopPropagation(); onFeatureSelect(active ? null : name); }}>{name}</button></Html></group>;
+    })}
+  </group>;
+}
+
+function Chamber({ id, selected, showLabel, cutaway, exploded, isolated, selectedFeature, onFeatureSelect, colorBlindSafe, motionEnabled, onSelect }) {
   const data = PARTS[id];
   const ref = useRef();
+  const groupRef = useRef();
+  const chamberGeometry = useMemo(() => new THREE.SphereGeometry(1, 56, 40, cutaway ? Math.PI * .12 : 0, cutaway ? Math.PI * 1.55 : Math.PI * 2), [cutaway]);
   useFrame(({ clock }) => {
     if (!ref.current) return;
-    const beat = 1 + Math.pow(Math.max(0, Math.sin(clock.elapsedTime * 4.2)), 8) * .06;
+    const beat = motionEnabled ? 1 + Math.pow(Math.max(0, Math.sin(clock.elapsedTime * 4.2)), 8) * .06 : 1;
     ref.current.scale.set(data.scale[0] * beat, data.scale[1] * beat, data.scale[2] * beat);
+    if (groupRef.current) {
+      const destination = exploded ? EXPLODED_POSITIONS[id] : data.position;
+      if (motionEnabled) groupRef.current.position.lerp(new THREE.Vector3(...destination), .1); else groupRef.current.position.set(...destination);
+    }
   });
   return (
-    <group position={data.position}>
-      <mesh ref={ref} onClick={(e) => { e.stopPropagation(); onSelect({ id, ...data, type: 'chamber' }); }}>
-        <sphereGeometry args={[1, 48, 32, cutaway ? Math.PI * .12 : 0, cutaway ? Math.PI * 1.55 : Math.PI * 2]} />
-        <meshPhysicalMaterial color={data.color} roughness={.58} clearcoat={.28} clearcoatRoughness={.62} transparent opacity={cutaway ? (selected ? .96 : .76) : .08} emissive={data.color} emissiveIntensity={selected ? .12 : .01} side={THREE.DoubleSide} depthWrite={false} />
+    <group ref={groupRef} position={exploded ? EXPLODED_POSITIONS[id] : data.position}>
+      <mesh ref={ref} onPointerOver={() => { document.body.style.cursor = 'pointer'; }} onPointerOut={() => { document.body.style.cursor = 'default'; }} onClick={(e) => { e.stopPropagation(); onSelect({ id, ...data, type: 'chamber' }); }}>
+        <primitive object={chamberGeometry} attach="geometry" />
+        <meshPhysicalMaterial color={data.color} roughness={.58} clearcoat={.28} clearcoatRoughness={.62} transparent opacity={isolated && !selected ? .06 : cutaway ? (selected ? .9 : .76) : .08} emissive={data.color} emissiveIntensity={selected ? .15 : .01} side={THREE.DoubleSide} depthWrite={false} />
       </mesh>
       <mesh scale={[data.scale[0] * .72, data.scale[1] * .72, data.scale[2] * .72]}>
         <sphereGeometry args={[1, 32, 24]} />
-        <meshPhysicalMaterial color="#260609" roughness={.72} clearcoat={.18} transparent opacity={cutaway ? .96 : 0} side={THREE.BackSide} />
+        <meshPhysicalMaterial color="#260609" roughness={.72} clearcoat={.18} transparent opacity={isolated && !selected ? .03 : cutaway ? .96 : 0} side={THREE.BackSide} />
       </mesh>
       {cutaway && showLabel && <Html position={[0, 0, .48]} center zIndexRange={[4, 1]}><button className={`part-label ${selected ? 'active' : ''}`} onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onSelect({ id, ...data, type: 'chamber' }); }}><b>{data.short}</b><span>{data.name}</span></button></Html>}
+      {isolated && selected && <ChamberInterior id={id} selectedFeature={selectedFeature} onFeatureSelect={onFeatureSelect} colorBlindSafe={colorBlindSafe} motionEnabled={motionEnabled} />}
     </group>
   );
 }
@@ -215,69 +307,76 @@ function CutawayAnatomy({ selected, onSelect }) {
   </group>;
 }
 
-function Heart({ selected, cutaway, onSelect }) {
+function Heart({ selected, cutaway, exploded, selectedFeature, onFeatureSelect, colorBlindSafe, motionEnabled, onSelect }) {
   const group = useRef();
   useFrame(({ clock }) => {
     if (!group.current) return;
     const t = clock.elapsedTime;
-    const contraction = Math.pow(Math.max(0, Math.sin(t * 4.2)), 12);
-    group.current.rotation.y = Math.sin(t * .22) * .07;
+    const contraction = motionEnabled ? Math.pow(Math.max(0, Math.sin(t * 4.2)), 12) : 0;
+    group.current.rotation.y = motionEnabled ? Math.sin(t * .22) * .07 : 0;
     group.current.scale.set(1 + contraction * .018, 1 - contraction * .026, 1 + contraction * .022);
   });
   return <group ref={group} position={[0, -.05, 0]} rotation={[-.08, 0, -.08]}>
-    <AnatomicalExterior cutaway={cutaway} />
+    <AnatomicalExterior cutaway={cutaway || exploded || selected?.type === 'chamber'} />
     {!cutaway && <>
       <ExteriorFlow color="#ff4655" points={[[0,1.95,.1],[0,1.55,.05],[.42,1.25,.18],[.76,.72,.38],[.55,.18,.65],[.28,-.55,.72]]} />
       <ExteriorFlow color="#3977ff" reverse points={[[-.08,-1.7,.15],[-.25,-1.38,.32],[-.48,-1.05,.5],[-.58,-.62,.58]]} />
       <ExteriorLabels selected={selected} onSelect={onSelect} />
     </>}
     {cutaway && <>
-      <CutawayAnatomy selected={selected} onSelect={onSelect} />
-      {Object.keys(PARTS).map(id => <Chamber key={id} id={id} cutaway selected={selected?.id === id} showLabel={!selected || selected.id === id} onSelect={onSelect} />)}
-      {VESSELS.map(v => <Vessel key={v.id} vessel={v} selected={selected?.id === v.id} showLabel={!selected || selected.id === v.id} onSelect={onSelect} />)}
-      <FlowPath color="#4c8cff" points={[[-.75,1.45,0],[-.55,.55,0],[-.43,-.32,.08],[-.05,.72,.25],[-.75,1,.32]]} />
-      <FlowPath color="#ff5261" points={[[1.15,.65,-.1],[.46,.5,-.05],[.4,-.35,0],[.55,1,0],[.05,1.38,0]]} />
+      {selected?.type !== 'chamber' && !exploded && <CutawayAnatomy selected={selected} onSelect={onSelect} />}
+      {Object.keys(PARTS).map(id => <Chamber key={id} id={id} cutaway exploded={exploded} isolated={selected?.type === 'chamber'} selected={selected?.id === id} selectedFeature={selectedFeature} onFeatureSelect={onFeatureSelect} colorBlindSafe={colorBlindSafe} motionEnabled={motionEnabled} showLabel={!selected || selected.id === id} onSelect={onSelect} />)}
+      {selected?.type !== 'chamber' && !exploded && VESSELS.map(v => <Vessel key={v.id} vessel={v} selected={selected?.id === v.id} showLabel={!selected || selected.id === v.id} onSelect={onSelect} />)}
+      {selected?.type !== 'chamber' && !exploded && <><FlowPath color="#4c8cff" points={[[-.75,1.45,0],[-.55,.55,0],[-.43,-.32,.08],[-.05,.72,.25],[-.75,1,.32]]} /><FlowPath color="#ff5261" points={[[1.15,.65,-.1],[.46,.5,-.05],[.4,-.35,0],[.55,1,0],[.05,1.38,0]]} /></>}
     </>}
   </group>;
 }
 
 useGLTF.preload('/models/heart/scene.gltf');
 
-function CameraRig({ selected, resetSignal }) {
+function CameraRig({ selected, resetSignal, viewPreset, insideChamber }) {
   const { camera } = useThree();
   const controls = useRef();
   useEffect(() => {
     const target = selected?.position ? new THREE.Vector3(...selected.position) : new THREE.Vector3(0, .05, 0);
-    const destination = selected?.position ? target.clone().add(new THREE.Vector3(0, .05, 2.0)) : new THREE.Vector3(0, .15, 4.3);
+    const overviewPositions = { front: [0,.15,4.3], back: [0,.15,-4.3], cutaway: [0,.12,4.0], transparent: [0,.12,4.1] };
+    const direction = viewPreset === 'back' ? -1 : 1;
+    const destination = insideChamber && selected?.type === 'chamber' ? target.clone().add(new THREE.Vector3(0,0,.08)) : selected?.position ? target.clone().add(new THREE.Vector3(0, .05, 2.0 * direction)) : new THREE.Vector3(...overviewPositions[viewPreset]);
+    const lookTarget = insideChamber && selected?.type === 'chamber' ? target.clone().add(new THREE.Vector3(0,0,-1)) : target;
     let frame;
     const start = camera.position.clone(); const started = performance.now();
     const animate = (now) => {
       const t = Math.min(1, (now - started) / 700); const eased = 1 - Math.pow(1 - t, 3);
-      camera.position.lerpVectors(start, destination, eased); controls.current?.target.lerp(target, .14); controls.current?.update();
+      camera.position.lerpVectors(start, destination, eased);
+      if (controls.current) {
+        if (t === 1) controls.current.target.copy(lookTarget);
+        else controls.current.target.lerp(lookTarget, .14);
+        controls.current.update();
+      }
       if (t < 1) frame = requestAnimationFrame(animate);
     };
     frame = requestAnimationFrame(animate); return () => cancelAnimationFrame(frame);
-  }, [selected, resetSignal, camera]);
+  }, [selected, resetSignal, viewPreset, insideChamber, camera]);
   return <OrbitControls ref={controls} enableDamping dampingFactor={.08} minDistance={.55} maxDistance={7} />;
 }
 
-export default function HeartScene({ selected, cutaway, onSelect, resetSignal }) {
+export default function HeartScene({ selected, cutaway, exploded, insideChamber, selectedFeature, onFeatureSelect, viewPreset, colorBlindSafe, motionEnabled, onSelect, resetSignal }) {
   return <Canvas shadows camera={{ position: [0, .15, 4.3], fov: 42 }} dpr={[1, 2]} gl={{ antialias: true, powerPreference: 'high-performance' }} onCreated={({ gl }) => { gl.toneMappingExposure = 1.3; }} onPointerMissed={() => onSelect(null)}>
-    <color attach="background" args={['#02070b']} />
-    <fog attach="fog" args={['#02070b', 6, 10]} />
+    <color attach="background" args={['#f7f9f9']} />
+    <fog attach="fog" args={['#f7f9f9', 6, 10]} />
     <ambientLight intensity={.24} />
     <spotLight position={[2.4, 4.5, 4.5]} intensity={6.2} angle={.34} penumbra={.86} color="#ffe4da" castShadow shadow-bias={-.0002} />
     <spotLight position={[-3.5, 1.5, 3]} intensity={3.4} angle={.42} penumbra={1} color="#dcecff" />
     <pointLight position={[2.5, -1.8, 1]} intensity={2.1} color="#ff354b" />
     <Suspense fallback={<Html center><div className="loading">Preparing anatomy…</div></Html>}>
-      <Heart selected={selected} cutaway={cutaway} onSelect={onSelect} />
+      <Heart selected={selected} cutaway={cutaway} exploded={exploded} selectedFeature={selectedFeature} onFeatureSelect={onFeatureSelect} colorBlindSafe={colorBlindSafe} motionEnabled={motionEnabled} onSelect={onSelect} />
       <Environment resolution={512}>
         <Lightformer intensity={5.2} color="#fff5ef" position={[0, 4, 3]} scale={[5, 2, 1]} />
         <Lightformer intensity={1.7} color="#8fb9cd" position={[-4, 0, 2]} scale={[2, 4, 1]} />
         <Lightformer intensity={2.2} color="#e94855" position={[4, -1, -2]} scale={[2, 3, 1]} />
       </Environment>
     </Suspense>
-    <CameraRig selected={selected} resetSignal={resetSignal} />
+    <CameraRig selected={selected} resetSignal={resetSignal} viewPreset={viewPreset} insideChamber={insideChamber} />
     <XRButton />
   </Canvas>;
 }
